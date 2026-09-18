@@ -1,0 +1,6 @@
+{
+  "name": "Auricity",
+  "description": "Chhatrapati Sambhajinagar Real Estate Portal & Dual CRM Ecosystem with Super Admin Control Hub, Broker Portal & Multilingual AI Valuator.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
