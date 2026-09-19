@@ -28,13 +28,18 @@ import {
   HelpCircle,
   KeyRound,
   Eye,
-  EyeOff
+  EyeOff,
+  Camera
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { SpotPropertyView } from './SpotPropertyView';
+import { SpottedPropertiesManager } from '../admin/SpottedPropertiesManager';
+import { loadSpottedProperties } from '../../services/spottedPropertiesStore';
+import { SpottedProperty } from '../../types';
 
 export type Status = 'under_review' | 'approved' | 'rejected' | 'more_information_required' | 'suspended';
-export type AffiliateType = 'Content Creator' | 'Blogger' | 'Social Media Creator' | 'Digital Marketer' | 'Website Owner' | 'Community Owner' | 'Real Estate Enthusiast' | 'Referral Partner' | 'Other';
-export type Referral = { id: string; date: string; referral: string; status: 'signup' | 'qualified' | 'ineligible' | 'pending'; reward: string };
+export type AffiliateType = 'Content Creator' | 'Blogger' | 'Social Media Creator' | 'Digital Marketer' | 'Website Owner' | 'Community Owner' | 'Real Estate Enthusiast' | 'Referral Partner' | 'Local Citizen / Street Scout' | 'Other';
+export type Referral = { id: string; date: string; referral: string; status: 'signup' | 'qualified' | 'ineligible' | 'pending' | 'approved' | 'converted'; reward: string };
 
 export type Application = {
   id: string;
@@ -100,21 +105,120 @@ const inputCls = 'w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 
 const makeId = () => `AUR-AF-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
 const makeCode = () => Math.random().toString(36).slice(2, 8).toUpperCase();
 
+export const SEED_AFFILIATES: Application[] = [
+  {
+    id: 'af-aman-101',
+    affiliateId: 'AUR-AF-2026-T9T7WJ',
+    referralCode: 'AMAN99',
+    submittedAt: new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString(),
+    reviewedAt: new Date(Date.now() - 6 * 24 * 3600 * 1000).toISOString(),
+    status: 'approved',
+    adminNotes: 'Verified local real estate scout and creator. Authorized for Sambhajinagar properties.',
+    basic: {
+      fullName: 'Aman (Zohaib Aman)',
+      email: 'zohaib0aman@gmail.com',
+      mobile: '4668430420',
+      country: 'India',
+      state: 'Maharashtra',
+      city: 'Chhatrapati Sambhajinagar'
+    },
+    profile: {
+      affiliateType: 'Content Creator',
+      website: '',
+      socialProfile: 'instagram.com/aman_aurangabad',
+      audienceSize: '10K - 50K',
+      primaryChannel: 'Instagram',
+      about: 'Local real estate scout and property promoter in Sambhajinagar.'
+    },
+    promotion: {
+      heardFrom: 'Social Media',
+      strategy: 'Promoting verified properties & spotting vacant commercial properties in Sambhajinagar.',
+      guidelines: true
+    },
+    account: {
+      password: 'password123',
+      emailVerified: true
+    },
+    payout: {
+      upiId: 'aman4668@oksbi',
+      accountHolder: 'Zohaib Aman',
+      accountNumber: '3829101002341',
+      ifsc: 'SBIN0003421'
+    },
+    clicks: 48,
+    referrals: [
+      { id: 'ref-1', date: '15 Sep 2026', referral: 'AUR-CSN-101', status: 'approved', reward: '₹3,500' },
+      { id: 'ref-2', date: '17 Sep 2026', referral: 'AUR-CSN-102', status: 'pending', reward: '₹2,000' }
+    ]
+  },
+  {
+    id: 'af-sachin-102',
+    affiliateId: 'AUR-AF-2026-SP89',
+    referralCode: 'SACHIN89',
+    submittedAt: new Date(Date.now() - 14 * 24 * 3600 * 1000).toISOString(),
+    reviewedAt: new Date(Date.now() - 12 * 24 * 3600 * 1000).toISOString(),
+    status: 'approved',
+    adminNotes: 'Field street scout for Beed Bypass and Jalna Road commercial spaces.',
+    basic: {
+      fullName: 'Sachin Patil',
+      email: 'sachin.patil@outlook.com',
+      mobile: '9765432109',
+      country: 'India',
+      state: 'Maharashtra',
+      city: 'Chhatrapati Sambhajinagar'
+    },
+    profile: {
+      affiliateType: 'Local Citizen / Street Scout',
+      website: '',
+      socialProfile: '',
+      audienceSize: '1K - 5K',
+      primaryChannel: 'WhatsApp',
+      about: 'Freelance property scout for Beed Bypass & Jalna Road'
+    },
+    promotion: {
+      heardFrom: 'Friends / Word of Mouth',
+      strategy: 'Spotting To-Let boards on highway touch properties.',
+      guidelines: true
+    },
+    account: {
+      password: 'password123',
+      emailVerified: true
+    },
+    payout: {
+      upiId: 'sachin.patil@paytm',
+      accountHolder: 'Sachin Patil',
+      accountNumber: '918273645102',
+      ifsc: 'PYTM0123456'
+    },
+    clicks: 19,
+    referrals: [
+      { id: 'ref-3', date: '12 Sep 2026', referral: 'AUR-CSN-103', status: 'approved', reward: '₹10,000' }
+    ]
+  }
+];
+
 async function loadApps(): Promise<Application[]> {
   try {
     const r = await fetch(`/api/store/${KEY}`);
     if (r.ok) {
       const d = await r.json();
-      const a = Array.isArray(d?.value) ? d.value : [];
-      localStorage.setItem(KEY, JSON.stringify(a));
-      return a;
+      if (Array.isArray(d?.value) && d.value.length > 0) {
+        localStorage.setItem(KEY, JSON.stringify(d.value));
+        return d.value;
+      }
     }
   } catch {}
   try {
-    return JSON.parse(localStorage.getItem(KEY) || '[]');
-  } catch {
-    return [];
-  }
+    const local = localStorage.getItem(KEY);
+    if (local) {
+      const parsed = JSON.parse(local);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+
+  // Auto-seed default affiliates so both local & fresh devices have accounts ready
+  await saveApps(SEED_AFFILIATES);
+  return SEED_AFFILIATES;
 }
 
 async function saveApps(a: Application[]) {
@@ -157,7 +261,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
   );
 }
 
-export const AffiliatePortal: React.FC<{ mode: 'landing' | 'register' | 'status' | 'dashboard' | 'admin' | 'login' }> = ({ mode }) => {
+export const AffiliatePortal: React.FC<{ mode: 'landing' | 'register' | 'status' | 'dashboard' | 'admin' | 'login' | 'spot' }> = ({ mode }) => {
   const { setActiveView, activeRole, showToast } = useApp();
   const [apps, setApps] = useState<Application[]>([]);
   const [form, setForm] = useState<Form>(emptyForm);
@@ -225,7 +329,13 @@ export const AffiliatePortal: React.FC<{ mode: 'landing' | 'register' | 'status'
     return () => clearTimeout(timer.current);
   }, [form, mode]);
 
-  const go = (v: string) => setActiveView(v);
+  const go = (v: string) => {
+    if (v === 'spot') {
+      setActiveView('spot-and-earn');
+      return;
+    }
+    setActiveView(v);
+  };
 
   const update = (s: keyof Form, k: string, v: any) =>
     setForm(p => ({ ...p, [s]: { ...(p[s] as any), [k]: v } }));
@@ -336,6 +446,14 @@ export const AffiliatePortal: React.FC<{ mode: 'landing' | 'register' | 'status'
         apps={apps} 
         onLoginSuccess={handleLoginSuccess} 
         go={go} 
+      />
+    );
+  }
+
+  if (mode === 'spot') {
+    return (
+      <SpotPropertyView 
+        onBack={() => go(hasActiveSession ? 'affiliate-dashboard' : 'affiliate-landing')} 
       />
     );
   }
@@ -742,6 +860,7 @@ function Login({ apps, onLoginSuccess, go }: { apps: Application[]; onLoginSucce
 function Landing({ go, activeApp, onLogout }: { go: (v: string) => void; activeApp: Application | null; onLogout: () => void }) {
   const benefits = [
     ['Refer & Earn', 'Earn generous cash bounties for eligible referrals upon deal registration.'],
+    ['📸 Spot & Earn / Street Scout', 'Saw a "To-Let" or "For Sale" board in Sambhajinagar? Snap a photo & owner number to earn up to ₹25,000+ bounty upon deal closing!'],
     ['Unique Referral Link', 'Get your own trackable link and branded WhatsApp sharing message.'],
     ['Real-Time Tracking', 'Monitor clicks, buyer inquiries, and closed property conversions.'],
     ['Affiliate Dashboard', 'Manage your payouts, referrals, and commission status in one place.'],
@@ -754,6 +873,7 @@ function Landing({ go, activeApp, onLogout }: { go: (v: string) => void; activeA
     'Who can become an affiliate?',
     'How do I log in if I am already an approved partner?',
     'How does referral tracking work?',
+    'How does the "Spot & Earn" Street Property Scout feature work?',
     'How do I get my referral link?',
     'When are rewards paid?'
   ];
@@ -806,14 +926,23 @@ function Landing({ go, activeApp, onLogout }: { go: (v: string) => void; activeA
 
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               {activeApp && activeApp.status === 'approved' ? (
-                <button
-                  onClick={() => go('affiliate-dashboard')}
-                  className="rounded-2xl bg-emerald-500 hover:bg-emerald-600 px-7 py-3.5 text-sm font-black text-white flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-900/30"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  <span>Open My Dashboard</span>
-                  <ArrowRight className="h-4 w-4" />
-                </button>
+                <>
+                  <button
+                    onClick={() => go('affiliate-dashboard')}
+                    className="rounded-2xl bg-emerald-500 hover:bg-emerald-600 px-7 py-3.5 text-sm font-black text-white flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-emerald-900/30"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    <span>Open My Dashboard</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => go('spot')}
+                    className="rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 px-6 py-3.5 text-sm font-black text-slate-950 flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+                  >
+                    <Camera className="h-4 w-4 text-slate-950" />
+                    <span>📸 Spot a Property & Earn</span>
+                  </button>
+                </>
               ) : (
                 <>
                   <button
@@ -829,6 +958,13 @@ function Landing({ go, activeApp, onLogout }: { go: (v: string) => void; activeA
                   >
                     <LogIn className="h-4 w-4 text-[#D9B45A]" />
                     <span>Affiliate Login / पार्टनर लॉगिन</span>
+                  </button>
+                  <button
+                    onClick={() => go('spot')}
+                    className="rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 px-6 py-3.5 text-sm font-black text-slate-950 flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+                  >
+                    <Camera className="h-4 w-4 text-slate-950" />
+                    <span>📸 Spot & Earn</span>
                   </button>
                 </>
               )}
@@ -941,6 +1077,8 @@ function Landing({ go, activeApp, onLogout }: { go: (v: string) => void; activeA
                   <p className="pb-5 text-sm leading-6 text-slate-600">
                     {i === 2
                       ? 'Approved affiliates can click "Affiliate Login" at the top or bottom of this page, enter their registered mobile number or email, and instantly access their dashboard.'
+                      : i === 4
+                      ? 'Spot & Earn allows anyone walking or travelling across Chhatrapati Sambhajinagar to snap a photo of any vacant flat, shop, office, or plot with a "To-Let" or "For Sale" board. When our admin team verifies the property and closes a rental or sale deal with the owner/buyer, you receive up to 100% of the first month commission or a cash bounty ranging from ₹1,500 to ₹25,000+ directly via UPI!'
                       : 'Specific eligibility, attribution, reward calculation, and payout timing are governed by the current Auricity affiliate policy.'}
                   </p>
                 )}
@@ -969,6 +1107,13 @@ function Landing({ go, activeApp, onLogout }: { go: (v: string) => void; activeA
           >
             <LogIn className="h-4 w-4 text-[#D9B45A]" />
             <span>Affiliate Login (पार्टनर लॉगिन)</span>
+          </button>
+          <button
+            onClick={() => go('spot')}
+            className="w-full sm:w-auto rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 px-7 py-3.5 text-sm font-black text-slate-950 cursor-pointer flex items-center justify-center gap-2 shadow-lg"
+          >
+            <Camera className="h-4 w-4 text-slate-950" />
+            <span>📸 Spot & Earn Bounty</span>
           </button>
         </div>
       </div>
@@ -1438,6 +1583,35 @@ function Dashboard({
   const [payoutSaved, setPayoutSaved] = useState(false);
   const [showQr, setShowQr] = useState(false);
 
+  // Street Scout: Spotted Properties by this affiliate
+  const [showSpotModal, setShowSpotModal] = useState(false);
+  const [spottedList, setSpottedList] = useState<SpottedProperty[]>([]);
+  const [loadingSpots, setLoadingSpots] = useState(true);
+  const [selectedSpotImg, setSelectedSpotImg] = useState<string | null>(null);
+
+  const reloadSpots = async () => {
+    setLoadingSpots(true);
+    try {
+      const allSpots = await loadSpottedProperties();
+      const cleanAppPhone = app.basic.mobile.replace(/[^0-9]/g, '');
+      const mySpots = allSpots.filter(s => {
+        const matchAffiliate = s.spotter.affiliateId && s.spotter.affiliateId === app.affiliateId;
+        const spotPhoneClean = (s.spotter.mobile || '').replace(/[^0-9]/g, '');
+        const matchPhone = spotPhoneClean.length >= 6 && (spotPhoneClean.includes(cleanAppPhone) || cleanAppPhone.includes(spotPhoneClean));
+        return matchAffiliate || matchPhone;
+      });
+      setSpottedList(mySpots);
+    } catch (err) {
+      console.error('Failed to load spotted properties', err);
+    } finally {
+      setLoadingSpots(false);
+    }
+  };
+
+  useEffect(() => {
+    reloadSpots();
+  }, [app.affiliateId, app.basic.mobile]);
+
   const fullUrl = typeof window !== 'undefined' ? `${window.location.origin}/?ref=${app.referralCode}` : `auricity.com/?ref=${app.referralCode}`;
 
   const shareWhatsApp = () => {
@@ -1483,7 +1657,14 @@ function Dashboard({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setShowSpotModal(true)}
+              className="rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 px-3.5 py-2 text-xs font-black text-slate-950 flex items-center gap-1.5 cursor-pointer shadow-sm transition-all active:scale-98"
+            >
+              <Camera className="h-3.5 w-3.5 text-slate-950" />
+              <span>📸 Spot & Earn / जागा अपलोड करा</span>
+            </button>
             <button
               onClick={() => copyToClipboard(fullUrl)}
               className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-800 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer"
@@ -1584,6 +1765,164 @@ function Dashboard({
               <p className="mt-1 text-[11px] text-slate-500">{sub}</p>
             </div>
           ))}
+        </div>
+
+        {/* STREET SCOUT / SPOT & EARN PROPERTY LEADS */}
+        <div className="mt-8 rounded-[2rem] border-2 border-amber-300/80 bg-gradient-to-br from-amber-50/70 via-white to-amber-50/40 p-6 sm:p-8 shadow-md">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div className="max-w-2xl">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/20 px-3 py-1 text-xs font-black text-amber-950 border border-amber-300">
+                  <Camera className="h-3.5 w-3.5 text-amber-800" />
+                  Street Scout · Spot & Earn Cash Bounty
+                </span>
+                <span className="text-xs font-bold text-slate-500">
+                  {spottedList.length} leads submitted by you
+                </span>
+              </div>
+              <h2 className="mt-2 text-2xl font-black text-slate-950">
+                सड़क पर दिखी खाली जगह अपलोड करो और कैश रिवॉर्ड पाओ!
+              </h2>
+              <p className="mt-1.5 text-xs text-slate-700 leading-relaxed">
+                शहर में चलते-फिरते कोई <span className="font-bold text-slate-900">"To-Let"</span>, <span className="font-bold text-slate-900">"दुकान भाड्याने देणे आहे"</span> या <span className="font-bold text-slate-900">"प्लॉट विकणे आहे"</span> का बोर्ड दिखे? तुरंत उसका फोटो और बोर्ड पर लिखा संपर्क नंबर यहां अपलोड करें।
+                Auricity टीम सीधे ऑनर से संपर्क कर जगह को रेंट या सेल पर क्लोज करेगी, और <span className="font-bold text-amber-900 bg-amber-100/80 px-1.5 py-0.5 rounded">पहले महीने की ब्रोकरेज या ₹1,500 से ₹25,000+ तक का सीधा कैश रिवॉर्ड</span> सीधे आपके UPI में ट्रांसफर होगा!
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0">
+              <button
+                onClick={() => setShowSpotModal(true)}
+                className="rounded-2xl bg-gradient-to-r from-[#102B59] to-[#1E4E9B] hover:from-[#0d2246] hover:to-[#173e7c] px-6 py-4 text-xs font-black text-white flex items-center justify-center gap-2 cursor-pointer shadow-lg active:scale-98 transition-all"
+              >
+                <Camera className="h-4 w-4 text-amber-300" />
+                <span>📸 Spot a Property Now / नवी जागा कळवा</span>
+              </button>
+              <button
+                onClick={reloadSpots}
+                className="rounded-2xl border border-slate-300 bg-white hover:bg-slate-50 px-4 py-2.5 text-[11px] font-bold text-slate-700 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>🔄 Refresh My Spotted Leads</span>
+              </button>
+            </div>
+          </div>
+
+          {/* MY SPOTTED PROPERTIES LIST */}
+          <div className="mt-6 pt-6 border-t border-amber-200/80">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <span>My Submitted Property Leads</span>
+                <span className="text-xs font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+                  {spottedList.length}
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-500">Live verification & payout updates from Auricity Admin</p>
+            </div>
+
+            {loadingSpots ? (
+              <div className="py-8 text-center text-xs text-slate-500">
+                Loading your submitted leads...
+              </div>
+            ) : spottedList.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-amber-300 bg-white/60 p-6 text-center">
+                <Camera className="mx-auto h-8 w-8 text-amber-500/70" />
+                <p className="mt-2 text-xs font-bold text-slate-800">You haven't uploaded any street property leads yet.</p>
+                <p className="mt-1 text-[11px] text-slate-500 max-w-md mx-auto">
+                  When you're roaming in Chhatrapati Sambhajinagar (Cidco, Jalna Road, Beed Bypass, Garkheda, Waluj, etc.) and spot any "To-Let" or "For Sale" board, snap a photo and earn guaranteed cash!
+                </p>
+                <button
+                  onClick={() => setShowSpotModal(true)}
+                  className="mt-3.5 inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-4 py-2 text-xs font-black text-slate-950 cursor-pointer"
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                  <span>Submit First Spotted Property</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {spottedList.map((spot) => {
+                  const statusMap: Record<string, { label: string; bg: string; text: string }> = {
+                    new: { label: 'Verification Pending', bg: 'bg-amber-100', text: 'text-amber-900' },
+                    contacted_owner: { label: '📞 Owner Contacted', bg: 'bg-blue-100', text: 'text-blue-900' },
+                    converted_listing: { label: '🚀 Listed on Auricity', bg: 'bg-indigo-100', text: 'text-indigo-900' },
+                    deal_closed: { label: '💰 Deal Closed · Bounty Due', bg: 'bg-purple-100', text: 'text-purple-900' },
+                    bounty_paid: { label: '✅ Bounty Paid via UPI', bg: 'bg-emerald-100', text: 'text-emerald-900' },
+                    rejected: { label: 'Rejected / Invalid', bg: 'bg-rose-100', text: 'text-rose-900' }
+                  };
+                  const badge = statusMap[spot.status] || { label: spot.status.replace(/_/g, ' '), bg: 'bg-slate-100', text: 'text-slate-800' };
+                  const imgUrl = spot.photoUrl || ((spot as any).photos && (spot as any).photos[0]);
+                  const dateStr = spot.spottedAt || (spot as any).submittedAt || new Date().toISOString();
+
+                  return (
+                    <div key={spot.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs flex flex-col justify-between">
+                      <div>
+                        {/* Image Thumbnail & Status */}
+                        <div className="relative rounded-xl overflow-hidden bg-slate-100 aspect-video mb-3">
+                          {imgUrl ? (
+                            <img
+                              src={imgUrl}
+                              alt={spot.locality}
+                              className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                              onClick={() => setSelectedSpotImg(imgUrl)}
+                            />
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-slate-400 text-xs">
+                              No photo attached
+                            </div>
+                          )}
+                          <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-black ${badge.bg} ${badge.text} shadow-xs`}>
+                            {badge.label}
+                          </span>
+                        </div>
+
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="text-xs font-black text-slate-900 capitalize">
+                            {spot.listingPurpose || (spot as any).purpose} · {spot.propertyType}
+                          </h4>
+                          <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                            {new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          </span>
+                        </div>
+
+                        <p className="mt-1 text-xs font-bold text-slate-700 truncate">
+                          📍 {spot.locality}
+                        </p>
+                        {spot.landmark && (
+                          <p className="text-[11px] text-slate-500 truncate">
+                            Near: {spot.landmark}
+                          </p>
+                        )}
+
+                        <div className="mt-2 rounded-xl bg-slate-50 p-2 border border-slate-100 text-[11px] space-y-0.5">
+                          <div className="text-slate-600">
+                            📞 <span className="font-bold text-slate-800">{spot.boardContactNumber}</span>
+                            {spot.boardContactName && ` (${spot.boardContactName})`}
+                          </div>
+                          {spot.adminReview?.bountyAmount ? (
+                            <div className="text-emerald-700 font-bold">
+                              💰 Bounty: ₹{spot.adminReview.bountyAmount.toLocaleString()} ({spot.adminReview.bountyStatus || (spot.adminReview as any).payoutStatus})
+                            </div>
+                          ) : null}
+                        </div>
+
+                        {spot.adminReview?.adminNotes && (
+                          <div className="mt-2 rounded-xl bg-blue-50/70 p-2 border border-blue-100 text-[10px] text-blue-900">
+                            <span className="font-black">Admin Update:</span> {spot.adminReview.adminNotes}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                        <span>Lead ID: {spot.id.slice(0, 8)}...</span>
+                        <span className="font-bold text-[#214E9B]">
+                          {spot.status === 'bounty_paid' ? 'Paid to your UPI' : 'In Progress'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* PAYOUT SETTINGS & MARKETING KIT */}
@@ -1759,6 +2098,44 @@ function Dashboard({
             </table>
           </div>
         </div>
+
+        {/* SPOT PROPERTY MODAL OVERLAY */}
+        {showSpotModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 overflow-y-auto">
+            <div className="relative w-full max-w-2xl my-8">
+              <SpotPropertyView 
+                isModal={true}
+                onBack={() => setShowSpotModal(false)}
+                onSuccess={() => {
+                  setShowSpotModal(false);
+                  reloadSpots();
+                }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* IMAGE LIGHTBOX PREVIEW */}
+        {selectedSpotImg && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 cursor-pointer"
+            onClick={() => setSelectedSpotImg(null)}
+          >
+            <div className="relative max-w-3xl max-h-[90vh]">
+              <img 
+                src={selectedSpotImg} 
+                alt="Enlarged Lead Photo" 
+                className="max-h-[85vh] w-auto rounded-2xl object-contain shadow-2xl border border-white/20"
+              />
+              <button
+                onClick={() => setSelectedSpotImg(null)}
+                className="absolute top-3 right-3 rounded-full bg-black/70 text-white p-2 text-xs font-bold hover:bg-black"
+              >
+                ✕ Close
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1813,6 +2190,8 @@ function Admin({
     );
   }
 
+  const [adminSubTab, setAdminSubTab] = useState<'partners' | 'spotted'>('partners');
+
   const filtered = apps.filter(
     a =>
       (filter === 'all' || a.status === filter) &&
@@ -1866,7 +2245,38 @@ function Admin({
           </div>
         </div>
 
-        {/* Stats */}
+        {/* Sub-Tabs: Affiliate Partners vs Spotted Street Leads */}
+        <div className="mt-6 flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+          <button
+            onClick={() => setAdminSubTab('partners')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+              adminSubTab === 'partners'
+                ? 'bg-[#102B59] text-white shadow-xs'
+                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            👥 Affiliate Partners ({apps.length})
+          </button>
+          <button
+            onClick={() => setAdminSubTab('spotted')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+              adminSubTab === 'spotted'
+                ? 'bg-[#102B59] text-white shadow-xs'
+                : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            <Camera className="h-3.5 w-3.5 text-amber-500" />
+            <span>📸 Spotted Property Leads (सड़क पर देखी गई जगह)</span>
+          </button>
+        </div>
+
+        {adminSubTab === 'spotted' ? (
+          <div className="mt-6">
+            <SpottedPropertiesManager />
+          </div>
+        ) : (
+          <>
+            {/* Stats */}
         <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {stats.map(([t, v]) => (
             <div key={String(t)} className="rounded-2xl border border-slate-200 bg-white p-5">
@@ -2098,6 +2508,8 @@ function Admin({
               </div>
             </div>
           </div>
+        )}
+          </>
         )}
       </div>
     </div>

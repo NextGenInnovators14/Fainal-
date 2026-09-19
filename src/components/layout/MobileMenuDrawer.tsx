@@ -25,7 +25,8 @@ import {
   User,
   ArrowRight,
   Share2,
-  LogIn
+  LogIn,
+  Camera
 } from 'lucide-react';
 import { NavMenuItem } from '../../types';
 
@@ -337,6 +338,13 @@ export const MobileMenuDrawer: React.FC<MobileMenuDrawerProps> = ({
                   <span>Program Details</span>
                 </button>
               </div>
+              <button
+                onClick={() => handleNavigate('spot-and-earn')}
+                className="mt-2 w-full px-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-xs font-black flex items-center justify-center space-x-1.5 shadow-sm active:scale-95 transition-all cursor-pointer"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>📸 Spot a Property / रिकामी जागा कळवा (Earn Bounty)</span>
+              </button>
             </div>
           </div>
 
