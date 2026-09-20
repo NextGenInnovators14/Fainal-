@@ -19,7 +19,6 @@ import { ServiceProviderPortal } from '../services/ServiceProviderPortal';
 import { AffiliatePortal } from '../affiliate/AffiliatePortal';
 import { OffersManager } from './cms/OffersManager';
 import { ContactManager } from './ContactManager';
-import { SpottedPropertiesManager } from './SpottedPropertiesManager';
 import { formatPriceINR } from '../../utils/propertyUtils';
 import { 
   ShieldCheck, 
@@ -60,8 +59,7 @@ import {
   DollarSign,
   AlertCircle,
   Menu,
-  Briefcase,
-  Camera
+  Briefcase
 } from 'lucide-react';
 
 export type AdminTab = 
@@ -74,7 +72,6 @@ export type AdminTab =
   | 'realtors'
   | 'broker_applications'
   | 'affiliate'
-  | 'spotted_leads'
   | 'offers'
   | 'home_editor'
   | 'cms_navigation'
@@ -228,8 +225,7 @@ export const SuperAdminHub: React.FC = () => {
       items: [
         { id: 'realtors', label: 'Brokers & Realtors', icon: Award },
         { id: 'broker_applications', label: 'Broker Applications', icon: FileCheck },
-        { id: 'affiliate', label: 'Affiliate Program', icon: Briefcase },
-        { id: 'spotted_leads', label: '📸 Spotted Properties Leads', badge: 'New', icon: Camera }
+        { id: 'affiliate', label: 'Affiliate Program', icon: Briefcase }
       ]
     },
     {
@@ -1215,11 +1211,6 @@ export const SuperAdminHub: React.FC = () => {
                 </div>
                 <AffiliatePortal mode="admin" />
               </div>
-            )}
-
-            {/* TAB: SPOTTED PROPERTIES / STREET SCOUTS */}
-            {activeTab === 'spotted_leads' && (
-              <SpottedPropertiesManager />
             )}
 
             {/* TAB: OFFERS & PROMOTIONS */}

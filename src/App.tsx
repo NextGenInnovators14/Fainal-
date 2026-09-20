@@ -26,7 +26,6 @@ const SuperAdminHub = lazy(() => import('./components/admin/SuperAdminHub').then
 const BrokerHub = lazy(() => import('./components/broker/BrokerHub').then(m => ({ default: m.BrokerHub })));
 const BrokerPortal = lazy(() => import('./components/broker/BrokerPortal').then(m => ({ default: m.BrokerPortal })));
 const AffiliatePortal = lazy(() => import('./components/affiliate/AffiliatePortal').then(m => ({ default: m.AffiliatePortal })));
-const SpotPropertyView = lazy(() => import('./components/affiliate/SpotPropertyView').then(m => ({ default: m.SpotPropertyView })));
 const AIValuatorView = lazy(() => import('./components/ai/AIValuatorView').then(m => ({ default: m.AIValuatorView })));
 const BrokerKnowledgeHubView = lazy(() => import('./components/broker/BrokerKnowledgeHubView').then(m => ({ default: m.BrokerKnowledgeHubView })));
 const KnowledgeHubView = lazy(() => import('./components/knowledge/KnowledgeHubView').then(m => ({ default: m.KnowledgeHubView })));
@@ -208,9 +207,6 @@ const AppContent: React.FC = () => {
         {activeView === 'affiliate-status' && <AffiliatePortal mode="status" />}
         {activeView === 'affiliate-dashboard' && <AffiliatePortal mode="dashboard" />}
         {activeView === 'affiliate-admin' && <AffiliatePortal mode="admin" />}
-        {(activeView === 'spot-and-earn' || activeView === 'spot') && (
-          <SpotPropertyView onBack={() => setActiveView('affiliate-landing')} />
-        )}
 
         {cmsPages?.[activeView] && !['home','properties','projects','commercial','plots','rentals','pgs','about','property-detail','project-detail','service-detail','services','offers','offer-detail','blogs','contact','legal','valuator','post-property','realtors','knowledge-hub','broker-knowledge-hub','admin-hub','broker-hub','register','signin'].includes(activeView) && (
           <CmsPageView pageId={activeView} />
