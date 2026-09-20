@@ -202,7 +202,6 @@ const AppContent: React.FC = () => {
         {activeView === 'broker-admin' && <BrokerPortal mode="admin" />}
 
         {activeView === 'affiliate-landing' && <AffiliatePortal mode="landing" />}
-        {activeView === 'affiliate-login' && <AffiliatePortal mode="login" />}
         {activeView === 'affiliate-register' && <AffiliatePortal mode="register" />}
         {activeView === 'affiliate-status' && <AffiliatePortal mode="status" />}
         {activeView === 'affiliate-dashboard' && <AffiliatePortal mode="dashboard" />}
